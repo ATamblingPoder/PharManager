@@ -1,8 +1,7 @@
 #include <iostream>
 #include <fstream>
-using namespace std;
 #include <sqlite3.h>
-
+using namespace std;
 
 int main(int argc, char const *argv[])
 {
