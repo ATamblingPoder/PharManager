@@ -1,6 +1,5 @@
 *.out
 *.exe
-test.db
 main
 test
 test.cpp

@@ -3,9 +3,8 @@
 #include <sqlite3.h>
 using namespace std;
 
-int main(int argc, char const *argv[])
-{
-	//cout << "First" << endl;
+int main(int argc, char const *argv[]){
+	cout << "First" << endl;
 	sqlite3 *db;
    	char *zErrMsg = 0;
    	int rc;
