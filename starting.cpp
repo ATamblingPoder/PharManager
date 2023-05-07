@@ -2,6 +2,8 @@
 #include <map>
 #include <vector>
 #include <string>
+
+// Below ones might not be needed if ncurses.h works
 #include <regex>
 #ifdef WIN32
 #include <windows.h>
@@ -41,6 +43,13 @@ Database 1 has only internal_code and name
 Database 2 has internal_code, quantity, rack_no, price, expiry
 Database 3 has internal_code, composition1, composition2, age
 Database 4 has internal_code, side_effects
+
+CREATE TABLE internal_data(internal_code varchar(10), name varchar(255));
+CREATE TABLE main_data(internal_code varchar(10), quantity int, rack_no int, price decimal(5,2), expiry date);
+CREATE TABLE composition_data(internal_code varchar(10), composition1 blob, composition2 blob, age int);
+CREATE TABLE side_effects(internal_code varchar(10), side_effects blob);
+CREATE TABLE alternatives(internal_code varchar(10), internal_code2 varchar(10));
+
 */
 
 
@@ -99,31 +108,50 @@ int addRecords(){ // This function adds records to database
 	return 0;
 }
 
+class Transaction{
+	public:
+		map<string, int> T_current_list;
+		string T_discount;
+		Transaction(){
+		}
+		int addItem(string T_internal_code, int T_quantity){ // only call if item is not in list already
+			pair<map<string,int>::iterator, bool> T_return_insert;
+			T_return_insert = T_current_list.insert(pair<string, int>(T_internal_code, T_quantity));
+			if(T_return_insert.second == false)
+				return 1;
+			return 0;
+		}
+		void discount(string T_discount){
+			if(!T_discount.empty()){
+				// check if it exists and add it
+			}
+			else{
+				// print wherever that discount has already been applied
+			}
+		}
+};
+
 int loginFunction(){ // checks for password and returns 1 for correct and 0 for false
 	// code
 	return 1;
 }
 
-void menu(){ // menu to choose stuff
-	// start transaction
-	// search for medicine
-	// view current bill
-	// remove medicine
-	// apply discount code
-	// alternatice medicine finder 
-	// print bill to file
-
-	// management mode <- requires extra password
-	// add records to database(s)
-	// remove records from database(s)
-	// add discount code for discount percentage
-
-}
-
 int main(int argc, char const *argv[])
 {
 	if(loginFunction()){
-		menu();
 	}
 	return 0;
 }
+
+// menu to choose stuff
+// start transaction
+// search for medicine
+// view current bill
+// remove medicine
+// apply discount code
+// alternatice medicine finder 
+// print bill to file
+// management mode <- requires extra password
+// add records to database(s)
+// remove records from database(s)
+// add discount code for discount percentage
