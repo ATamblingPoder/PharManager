@@ -43,20 +43,48 @@ void SetStdinEcho(bool enable = true){
 	#endif
 }
 
+static int callback(void *NotUsed, int argc, char **argv, char **azColName) {
+   int i;
+   for(i = 0; i<argc; i++) {
+      printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+   }
+   printf("\n");
+   return 0;
+}
+
 /*
 Database 1 has only internal_code and name
 Database 2 has internal_code, quantity, rack_no, price, expiry
 Database 3 has internal_code, composition1, composition2, age
 Database 4 has internal_code, side_effects
+Database 5 has discount_code, percentage
 
-CREATE TABLE internal_data(internal_code varchar(10), name varchar(255));
-CREATE TABLE main_data(internal_code varchar(10), quantity int, rack_no int, price decimal(5,2), expiry date);
-CREATE TABLE composition_data(internal_code varchar(10), composition1 blob, composition2 blob, age int);
-CREATE TABLE side_effects(internal_code varchar(10), side_effects blob);
-CREATE TABLE alternatives(internal_code varchar(10), internal_code2 varchar(10));
+CREATE TABLE IF NOT EXISTS internal_data(internal_code varchar(10), name varchar(255));
+CREATE TABLE IF NOT EXISTS main_data(internal_code varchar(10), quantity int, rack_no int, price decimal(5,2), expiry date);
+CREATE TABLE IF NOT EXISTS composition_data(internal_code varchar(10), composition1 text, composition2 text, age int);
+CREATE TABLE IF NOT EXISTS side_effects(internal_code varchar(10), side_effects text);
+CREATE TABLE IF NOT EXISTS alternatives(internal_code varchar(10), internal_code2 varchar(10));
+CREATE TABLE IF NOT EXISTS discounts(discount_code varchar(10), percentage int);
 
 */
 
+void databasesInitializer(){
+	const char * data = "Databases Initialized";
+	char * zErrMsg = 0;
+	string dI_query;
+	dI_query = "CREATE TABLE IF NOT EXISTS internal_data(internal_code varchar(10), name varchar(255));";
+	rc = sqlite3_exec(db, dI_query.c_str(), callback, (void*)data, &zErrMsg);
+	dI_query = "CREATE TABLE IF NOT EXISTS main_data(internal_code varchar(10), quantity int, rack_no int, price decimal(5,2), expiry date);";
+	rc = sqlite3_exec(db, dI_query.c_str(), callback, (void*)data, &zErrMsg);
+	dI_query = "CREATE TABLE IF NOT EXISTS composition_data(internal_code varchar(10), composition1 text, composition2 text, age int);";
+	rc = sqlite3_exec(db, dI_query.c_str(), callback, (void*)data, &zErrMsg);
+	dI_query = "CREATE TABLE IF NOT EXISTS side_effects(internal_code varchar(10), side_effects text);";
+	rc = sqlite3_exec(db, dI_query.c_str(), callback, (void*)data, &zErrMsg);
+	dI_query = "CREATE TABLE IF NOT EXISTS alternatives(internal_code varchar(10), internal_code2 varchar(10));";
+	rc = sqlite3_exec(db, dI_query.c_str(), callback, (void*)data, &zErrMsg);
+	dI_query = "CREATE TABLE IF NOT EXISTS discounts(discount_code varchar(10), percentage int);";
+	rc = sqlite3_exec(db, dI_query.c_str(), callback, (void*)data, &zErrMsg);
+}
 
 string whiteSpaceRemover(string to_clean, int how_many = 0){
 	// how_many = 1 for all
@@ -77,14 +105,6 @@ int checker(void *data, int argc, char **argv, char **azColName){
    return i;
 }
 
-static int callback(void *NotUsed, int argc, char **argv, char **azColName) {
-   int i;
-   for(i = 0; i<argc; i++) {
-      printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-   }
-   printf("\n");
-   return 0;
-}
 
 int checkRecordsIfExists(string to_check, string table_to_check){
 	*temp_counter = 0;
@@ -196,6 +216,7 @@ int loginFunction(){ // checks for password and returns 1 for correct and 0 for 
 }
 
 int main(int argc, char const *argv[]){
+	databasesInitializer();
 	temp_counter = new int;
 	addRecords();
 	if(loginFunction()){
