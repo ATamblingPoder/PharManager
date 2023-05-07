@@ -191,7 +191,11 @@ class Transaction{
 	public:
 		map<string, int> T_current_list;
 		string T_discount;
+		float T_total_price ;//*temp_price;
+		static float temp_price;
 		Transaction(){
+			T_total_price = 0;
+			// temp_price = new float;
 		}
 		int addItem(string T_internal_code, int T_quantity){ // only call if item is not in list already
 			pair<map<string,int>::iterator, bool> T_return_insert;
@@ -200,12 +204,33 @@ class Transaction{
 				return 1;
 			return 0;
 		}
-		void discount(string T_discount){
+		void discount(){
 			if(!T_discount.empty()){
-				// check if it exists and add it
+				cout << "Enter discount code: ";
+				getline(cin, T_discount);
+				T_discount = whiteSpaceRemover(T_discount, 1);
+				if(!checkRecordsIfExists(T_discount, "discounts")){
+					cout << "No such discount in the database!!";
+				}
 			}
 			else{
-				// print wherever that discount has already been applied
+				cout << "Discount has already been applied!!";
+			}
+		}
+		static int adder(void *data, int argc, char **argv, char **azColName){
+			float temp_f;
+			temp_f = stof(argv[0]);
+			temp_price = temp_f;
+			return 0;
+		}
+		void totaler(){
+			const char *data = "Adder called";
+			char *zErrMsg = 0;
+			string query;
+			for(auto &it : T_current_list){
+				query = format("SELECT price FROM main_data WHERE internal_code='{}';", it.first);
+				rc = sqlite3_exec(db, query.c_str(), this->adder, (void*)data, &zErrMsg);
+				T_total_price += (temp_price) * (it.second); 
 			}
 		}
 };
