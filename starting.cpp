@@ -2,7 +2,8 @@
 #include <map>
 #include <vector>
 #include <string>
-
+#include <format>
+#include <sqlite3.h>
 // Below ones might not be needed if ncurses.h works
 #include <regex>
 #ifdef WIN32
@@ -12,6 +13,10 @@
 #include <unistd.h>
 #endif
 using namespace std;
+
+sqlite3 *db;
+int rc = sqlite3_open("test.db", &db);
+int *temp_counter;
 
 void SetStdinEcho(bool enable = true){
 	#ifdef WIN32
@@ -53,7 +58,6 @@ CREATE TABLE alternatives(internal_code varchar(10), internal_code2 varchar(10))
 */
 
 
-
 string whiteSpaceRemover(string to_clean, int how_many = 0){
 	// how_many = 1 for all
 	if(how_many){
@@ -66,11 +70,48 @@ string whiteSpaceRemover(string to_clean, int how_many = 0){
 	return to_clean;
 }
 
-int checkRecordsIfExists(string to_check){
-	// code to check 
-	// return 0 if does not exist
-	// return 1 if exists
-	return 0;
+int checker(void *data, int argc, char **argv, char **azColName){
+   int i;
+   i = std::stoi(argv[0]);
+   *temp_counter = i;
+   return i;
+}
+
+static int callback(void *NotUsed, int argc, char **argv, char **azColName) {
+   int i;
+   for(i = 0; i<argc; i++) {
+      printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+   }
+   printf("\n");
+   return 0;
+}
+
+int checkRecordsIfExists(string to_check, string table_to_check){
+	*temp_counter = 0;
+	string query;
+	const char * data = "Checker called";
+	char * zErrMsg = 0;
+	query = format("SELECT COUNT(*) FROM {} WHERE internal_code='{}'", table_to_check, to_check);
+	rc = sqlite3_exec(db, query.c_str(), checker, (void*)data, &zErrMsg);
+	if(*temp_counter == 0)
+		return 0;
+	else
+		return 1;
+}
+
+
+
+// This mess of code adds records to the 
+void theActualRecordAdder(string code, string name, string expiry, string comp1, string comp2, int quantity, int rack, int age, float price){
+	const char * data = "Adder called";
+	char * zErrMsg = 0;
+	string query;
+	query = format("INSERT INTO internal_data VALUES('{}', '{}');", code, name);
+	rc = sqlite3_exec(db, query.c_str(), callback, (void*)data , &zErrMsg);
+	query = format("INSERT INTO main_data VALUES('{}', {}, {}, {}, '{}');", code, quantity, rack, price, expiry);
+	rc = sqlite3_exec(db, query.c_str(), callback, (void*)data, &zErrMsg);
+	query = format("INSERT INTO composition_data VALUES('{}', '{}', '{}', {})", code, comp1, comp2, age);
+	rc = sqlite3_exec(db, query.c_str(), callback, (void*)data, &zErrMsg);
 }
 
 int addRecords(){ // This function adds records to database
@@ -83,13 +124,12 @@ int addRecords(){ // This function adds records to database
 		string aR_internal_code;
 		getline(cin, aR_internal_code);
 		aR_internal_code = whiteSpaceRemover(aR_internal_code, 1);
-		if(!checkRecordsIfExists(aR_internal_code)){
-			string aR_name, aR_expiry;
-			int aR_quantity, aR_rack;
+		if(!checkRecordsIfExists(aR_internal_code, "internal_data")){
+			string aR_name, aR_expiry, aR_composition1, aR_composition2;
+			int aR_quantity, aR_rack, aR_age;
 			float aR_price;
 			cout << "Enter name of medicine: ";
 			getline(cin, aR_name);
-			aR_name = whiteSpaceRemover(aR_name);
 			cout << "Enter price: ";
 			cin >> aR_price;
 			cin.ignore();
@@ -101,12 +141,31 @@ int addRecords(){ // This function adds records to database
 			cin.ignore();
 			cout << "Enter expiry date (YYYY-MM-DD): ";
 			getline(cin, aR_expiry);
+			cout << "Enter Minimum Age:";
+			cin >> aR_age;
+			cin.ignore();
+			cout << "Enter Composed of (1):";
+			getline(cin, aR_composition1);
+			cout << "Enter Composed of (2):";
+			getline(cin, aR_composition2);
+			aR_name = whiteSpaceRemover(aR_name);
+			aR_name = regex_replace(aR_name, regex("'"), "''");
 			aR_expiry = whiteSpaceRemover(aR_expiry, 1);
-			// insert data into database
+			aR_composition1 = whiteSpaceRemover(aR_composition1);
+			aR_composition1 = regex_replace(aR_composition1, regex("'"), "''");
+			aR_composition2 = whiteSpaceRemover(aR_composition2);
+			aR_composition2 = regex_replace(aR_composition2, regex("'"), "''");
+			theActualRecordAdder(aR_internal_code, aR_name, aR_expiry, aR_composition1, aR_composition2, aR_quantity, aR_rack, aR_age, aR_price);
+		}
+		else{
+			cout << "Record already exists in database(s)" << endl;
 		}
 	}
 	return 0;
 }
+
+
+
 
 class Transaction{
 	public:
@@ -136,8 +195,9 @@ int loginFunction(){ // checks for password and returns 1 for correct and 0 for 
 	return 1;
 }
 
-int main(int argc, char const *argv[])
-{
+int main(int argc, char const *argv[]){
+	temp_counter = new int;
+	addRecords();
 	if(loginFunction()){
 	}
 	return 0;
@@ -151,6 +211,7 @@ int main(int argc, char const *argv[])
 // apply discount code
 // alternatice medicine finder 
 // print bill to file
+
 // management mode <- requires extra password
 // add records to database(s)
 // remove records from database(s)
