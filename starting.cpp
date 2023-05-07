@@ -17,6 +17,7 @@ using namespace std;
 sqlite3 *db;
 int rc = sqlite3_open("test.db", &db);
 int *temp_counter;
+string password="password123";
 
 void SetStdinEcho(bool enable = true){
 	#ifdef WIN32
@@ -186,22 +187,29 @@ int addRecords(){ // This function adds records to database
 
 
 
+float temp_price = 0;
+static int adder(void *data, int argc, char **argv, char **azColName){
+	float temp_f;
+	temp_f = stof(argv[0]);
+	temp_price = temp_f;
+	return 0;
+}
 
 class Transaction{
 	public:
 		map<string, int> T_current_list;
 		string T_discount;
-		float T_total_price ;//*temp_price;
-		static float temp_price;
+		float T_total_price;
 		Transaction(){
 			T_total_price = 0;
-			// temp_price = new float;
 		}
 		int addItem(string T_internal_code, int T_quantity){ // only call if item is not in list already
 			pair<map<string,int>::iterator, bool> T_return_insert;
 			T_return_insert = T_current_list.insert(pair<string, int>(T_internal_code, T_quantity));
-			if(T_return_insert.second == false)
+			if(T_return_insert.second == false){
+				cout << "Item alreay in list!" << endl;
 				return 1;
+			}
 			return 0;
 		}
 		void discount(){
@@ -229,23 +237,55 @@ class Transaction{
 			string query;
 			for(auto &it : T_current_list){
 				query = format("SELECT price FROM main_data WHERE internal_code='{}';", it.first);
-				rc = sqlite3_exec(db, query.c_str(), this->adder, (void*)data, &zErrMsg);
-				T_total_price += (temp_price) * (it.second); 
+				rc = sqlite3_exec(db, query.c_str(), adder, (void*)data, &zErrMsg);
+				float temp_2_price;
+				temp_2_price += (temp_price) * (it.second); 
+				cout << it.first << " : " << it.second << " : " << temp_2_price << endl;
+				T_total_price += temp_2_price;
 			}
 		}
 };
 
 int loginFunction(){ // checks for password and returns 1 for correct and 0 for false
-	// code
-	return 1;
+	SetStdinEcho(false);
+	cout << "Enter Password(will not be echoed):";
+	string inp_pass;
+	getline(cin, inp_pass);
+	SetStdinEcho(true);
+	cout << "\033[2J\033[1;1H";
+	return inp_pass.compare(password);
+}
+
+void menu(){
+	int the_choice;
+	cin >> the_choice;
+	switch(the_choice){
+		case 1:{
+			Transaction trans_object;
+			// transaction menu interface
+		}
+		case 2:{
+			// alternate medicine finder
+		}
+		case 3:{
+			// print bill
+		}
+		case 4:{
+			// management mode
+		}
+	}
 }
 
 int main(int argc, char const *argv[]){
+	if(loginFunction())
+		return 1;
 	databasesInitializer();
 	temp_counter = new int;
 	addRecords();
-	if(loginFunction()){
-	}
+	Transaction trans1;
+	trans1.addItem("A101", 5);
+	trans1.addItem("C111", 9);
+	trans1.totaler();
 	return 0;
 }
 
