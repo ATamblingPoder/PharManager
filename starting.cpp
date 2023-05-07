@@ -57,7 +57,7 @@ int addRecords(){ // This function adds records to database
 			cout << "Enter rack number: ";
 			cin >> aR_rack;
 			cin.ignore();
-			cout << "Enter exxpiry date (YYYY-MM-DD): ";
+			cout << "Enter expiry date (YYYY-MM-DD): ";
 			getline(cin, aR_expiry);
 			aR_expiry = whiteSpaceRemover(aR_expiry, 1);
 			// insert data into database
@@ -65,6 +65,13 @@ int addRecords(){ // This function adds records to database
 	}
 	return 0;
 }
+
+int loginFunction(){ // checks for password and returns 1 for correct and 0 for false
+	// code
+	return 1;
+}
+
+
 
 int main(int argc, char const *argv[])
 {
