@@ -3,7 +3,38 @@
 #include <vector>
 #include <string>
 #include <regex>
+#ifdef WIN32
+#include <windows.h>
+#else
+#include <termios.h>
+#include <unistd.h>
+#endif
 using namespace std;
+
+void SetStdinEcho(bool enable = true){
+	#ifdef WIN32
+	    HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE); 
+	    DWORD mode;
+	    GetConsoleMode(hStdin, &mode);
+
+	    if( !enable )
+	        mode &= ~ENABLE_ECHO_INPUT;
+	    else
+	        mode |= ENABLE_ECHO_INPUT;
+
+	    SetConsoleMode(hStdin, mode );
+
+	#else
+	    struct termios tty;
+	    tcgetattr(STDIN_FILENO, &tty);
+	    if( !enable )
+	        tty.c_lflag &= ~ECHO;
+	    else
+	        tty.c_lflag |= ECHO;
+
+	    (void) tcsetattr(STDIN_FILENO, TCSANOW, &tty);
+	#endif
+}
 
 /*
 Database 1 has only internal_code and name
@@ -11,6 +42,8 @@ Database 2 has internal_code, quantity, rack_no, price, expiry
 Database 3 has internal_code, composition1, composition2, age
 Database 4 has internal_code, side_effects
 */
+
+
 
 string whiteSpaceRemover(string to_clean, int how_many = 0){
 	// how_many = 1 for all
@@ -71,10 +104,26 @@ int loginFunction(){ // checks for password and returns 1 for correct and 0 for 
 	return 1;
 }
 
+void menu(){ // menu to choose stuff
+	// start transaction
+	// search for medicine
+	// view current bill
+	// remove medicine
+	// apply discount code
+	// alternatice medicine finder 
+	// print bill to file
 
+	// management mode <- requires extra password
+	// add records to database(s)
+	// remove records from database(s)
+	// add discount code for discount percentage
+
+}
 
 int main(int argc, char const *argv[])
 {
-	addRecords();
+	if(loginFunction()){
+		menu();
+	}
 	return 0;
 }
