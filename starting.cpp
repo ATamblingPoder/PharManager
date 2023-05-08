@@ -289,6 +289,7 @@ static int name_adder(void *NotUsed, int argc, char **argv, char **azColName){
 }
 
 string textFetcher(string q1, string q2, string q3, string q4){
+	the_names.clear();
 	const char *data = "Fetcher Called";
 	char *zErrMsg = 0;
 	string query;
@@ -315,13 +316,14 @@ int alternateAdder(){
 		cout << "Already in database!!" << endl;
 		return 1;
 	}
-	cout << format("Medicine with code {} is '{}'", code2, textFetcher(code2)) << endl;
+	cout << format("Medicine with code {} is '{}'", code2, textFetcher("name", "internal_data", "internal_code", code2)) << endl;
 	cout << "Confirm? (y/n)";
 	char choice; 
 	cin >> choice;
 	choice = tolower(choice);
 	if(choice != 'y'){
 		cout << "Ok, alternate medicine not added" << endl;
+		return 1;
 	}
 	else{
 		const char *data = "Adder";
@@ -330,10 +332,45 @@ int alternateAdder(){
 		query = format("INSERT INTO alternatives VALUES('{}', '{}');", code1, code2);
 		rc = sqlite3_exec(db, query.c_str(), callback, (void*)data, &zErrMsg);
 		cout << "Alternatives  added successfully." << endl;
+		return 0;
 	}
 }
 
+std::vector<string> the_codes;
+static int searcher(void *NotUsed, int argc, char **argv, char **azColName){
+	int i = argc;
+	for(int it = 0; it < i; it++){
+		string temp = argv[it];
+		the_codes.push_back(temp);
+	}
+	return 0;
+}
 
+std::vector<string> codes_to_names;
+static int namer(void *NotUsed, int argc, char **argv, char **azColName){
+	codes_to_names.push_back(argv[0]);
+	return 0;
+}
+
+int searchForStuff(){
+	the_codes.clear();
+	codes_to_names.clear();
+	string to_search, query;
+	const char *data = "Searcher for stuff";
+	char *zErrMsg = 0;
+	cout << "Enter medicine name: ";
+	getline(cin, to_search);
+	to_search = whiteSpaceRemover(to_search);
+	query = format("SELECT internal_code FROM internal_data WHERE name LIKE '%{}%' ORDER BY CASE WHEN name LIKE '{}' THEN 1 WHEN name LIKE '{}%' THEN 2 WHEN name LIKE '%{}' THEN 4 ELSE 3 END;", to_search, to_search, to_search, to_search);
+	rc = sqlite3_exec(db, query.c_str(), searcher, (void*)data, &zErrMsg);
+	for(auto &namename : the_codes){
+		codes_to_names.push_back(textFetcher("name", "internal_data", "internal_code", namename));
+	}
+	for(int i = 0; i < the_codes.size(); i++){
+		cout << format("{} has name {}", the_codes.at(i), codes_to_names.at(i)) << endl;
+	}
+	return 0;
+}
 
 
 int loginFunction(){ // checks for password and returns 1 for correct and 0 for false
@@ -368,6 +405,8 @@ void menu(){
 }
 
 int main(int argc, char const *argv[]){
+	searchForStuff();
+	return 0;
 	if(loginFunction())
 		return 1;
 	databasesInitializer();
