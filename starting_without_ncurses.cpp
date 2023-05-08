@@ -15,6 +15,9 @@ int rc = sqlite3_open("test.db", &db);
 int *temp_counter;
 string password="password123";
 
+void clrScreen(){
+	cout << "\033[2J\033[1;1H";	
+}
 
 // Copied from StackOverflow :)
 void SetStdinEcho(bool enable = true){
@@ -108,6 +111,7 @@ int checker(void *data, int argc, char **argv, char **azColName){
 
 
 int checkRecordsIfExists(string to_check, string what, string table_to_check){
+	temp_counter = new int;
 	*temp_counter = 0;
 	string query;
 	const char * data = "Checker called";
@@ -118,6 +122,23 @@ int checkRecordsIfExists(string to_check, string what, string table_to_check){
 		return 0;
 	else
 		return 1;
+}
+
+
+std::vector<string> the_names;
+static int name_adder(void *NotUsed, int argc, char **argv, char **azColName){
+	the_names.push_back(argv[0]);
+	return 0;
+}
+
+string textFetcher(string q1, string q2, string q3, string q4){
+	the_names.clear();
+	const char *data = "Fetcher Called";
+	char *zErrMsg = 0;
+	string query;
+	query = format("SELECT {} FROM {} WHERE {}='{}';", q1, q2, q3, q4);
+	rc = sqlite3_exec(db, query.c_str(), name_adder, (void*)data, &zErrMsg);
+	return the_names.at(0);
 }
 
 
@@ -202,6 +223,7 @@ class Transaction{
 		string T_discount, T_name;
 		char T_gender;
 		float T_total_price;
+		int T_age;
 		Transaction(){
 			T_total_price = 0;
 			cout << "Enter Patient Name: ";
@@ -215,7 +237,12 @@ class Transaction{
 				cout << "Invalid gender!! Defaulting to Others.";
 				T_gender = 'o';
 			}
+			cout << "Enter age:";
+			cin >> T_age;
+			cin.ignore();
+			clrScreen();
 			cout << "Transaction started." << endl;
+			T_discount = "0";
 		}
 		int addItem(string T_internal_code, int T_quantity){ // only call if item is not in list already
 			const char *data = "Updater";
@@ -231,7 +258,7 @@ class Transaction{
 			T_return_insert = T_current_list.insert(pair<string, int>(T_internal_code, T_quantity));
 			if(T_return_insert.second == false){
 				cout << "Item alreay in list!" << endl;
-				return 1;
+				return -1;
 			}
 			return 0;
 		}
@@ -240,6 +267,7 @@ class Transaction{
 			std::map<string, int>::iterator remove_it = T_current_list.find(T_internal_code);
 			if(remove_it == T_current_list.end()){
 				cout << "Item to remove not in list!!" << endl;
+				return 1;
 			}
 			else{
 				quantity_to_change = quantityChecker(T_internal_code) + remove_it->second;
@@ -253,7 +281,7 @@ class Transaction{
 			return 0;
 		}
 		void discount(){
-			if(!T_discount.empty()){
+			if(!strcmp(T_discount.c_str(), "0")){
 				cout << "Enter discount code: ";
 				getline(cin, T_discount);
 				T_discount = whiteSpaceRemover(T_discount, 1);
@@ -262,7 +290,7 @@ class Transaction{
 				}
 			}
 			else{
-				cout << "Discount has already been applied!!";
+				cout << "Discount has already been applied!!" << endl;
 			}
 		}
 		static int adder(void *data, int argc, char **argv, char **azColName){
@@ -308,6 +336,7 @@ class Transaction{
 			return temp_price;
 		}
 		void billPrinter(){
+			T_total_price = 0;
 			cout << "Aapki Apni Pharmacy :)" << endl;
 		   time_t now = time(0);
     		char *dt = ctime(&now);
@@ -318,29 +347,24 @@ class Transaction{
     		for(int i = 0; i < number; i++){
     			//float bill_temp_price = stof(textFetcher("price", "main_data", "internal_code", T_iterator->first));
     			float bill_temp_price = pricer(T_iterator->first);
-    			cout << format("{} | {} | {} | {} | {}", i + 1,  nameNamer(T_iterator->first), T_iterator->second, bill_temp_price, bill_temp_price*(T_iterator->second));
+    			cout << format("{} | {} | {} | {} | {} | {}", i + 1, T_iterator->first, nameNamer(T_iterator->first), T_iterator->second, bill_temp_price, bill_temp_price*(T_iterator->second));
+    			T_total_price += bill_temp_price*(T_iterator->second);
     			T_iterator++;
     			cout << endl;
     		}
+    		if(strcmp(T_discount.c_str(), "0")){
+    			float perc;
+    			perc = stoi(textFetcher("percentage", "discounts", "discount_code", T_discount));
+    			perc = perc / 100;
+    			float discounted = perc*T_total_price;
+    			T_total_price -= discounted;
+    			cout << format("Total price is {} with discount of {}", T_total_price, discounted) << endl;
+    		}
+    		else
+    			cout << format("Total price is {}", T_total_price) << endl;
 		}
 };
 
-
-std::vector<string> the_names;
-static int name_adder(void *NotUsed, int argc, char **argv, char **azColName){
-	the_names.push_back(argv[0]);
-	return 0;
-}
-
-string textFetcher(string q1, string q2, string q3, string q4){
-	the_names.clear();
-	const char *data = "Fetcher Called";
-	char *zErrMsg = 0;
-	string query;
-	query = format("SELECT {} FROM {} WHERE {}='{}';", q1, q2, q3, q4);
-	rc = sqlite3_exec(db, query.c_str(), name_adder, (void*)data, &zErrMsg);
-	return the_names.at(0);
-}
 
 
 int alternateAdder(){
@@ -445,11 +469,12 @@ int discountAdder(){
 
 string alternateFinder(string to_code){
 	string the_alternate;
-	if(checkRecordsIfExists(to_code, "alternatives", "internal_code")){
+	if(stoi(textFetcher("COUNT(*)", "alternatives", "internal_code", to_code))){
 		the_alternate = textFetcher("internal_code2", "alternatives", "internal_code", to_code);
 	}
-	else
+	if(stoi(textFetcher("COUNT(*)", "alternatives", "internal_code2", to_code))){
 		the_alternate = textFetcher("internal_code", "alternatives", "internal_code2", to_code);
+	}
 	return the_alternate;
 }
 
@@ -493,41 +518,120 @@ int loginFunction(){ // checks for password and returns 1 for correct and 0 for 
 	return inp_pass.compare(password);
 }
 
-void menu(){
-	int the_choice;
-	cin >> the_choice;
-	switch(the_choice){
-		case 1:{
-			Transaction trans_object;
+void transactionInterface(){
+	Transaction object;
+	int choice = 1;
+	while(choice != 5){
+		clrScreen();
+		cout << "1. Search for medicine\n2. Remove from cart\n3. Print Bill\n4. Discount code\n5. Quit\n>";
+		cin >> choice;
+		cin.ignore();
+		if(choice == 1){
+			string codecode;
 			searchForStuff();
+			cout << "Enter medicine code:";
+			getline(cin, codecode);
+			codecode = whiteSpaceRemover(codecode, 1);
+			if(!stoi(textFetcher("COUNT(*)", "internal_data", "internal_code", codecode))){
+				cout << "No such medicine in database." << endl;
+				continue;
+			}
+			int quantity;
+			cout << "Enter quantity";
+			cin >> quantity;
+			cin.ignore();
+			int rcc = object.addItem(codecode, quantity);
+			if(rcc == 1){
+				cout << "Quantity asked is greater than available.";
+				continue;
+			}
+			cout << "Item added successfully" << endl;
 		}
-		case 2:{
+		else if(choice == 2){
+			string codecode;
+			cout << "Enter medicine code:";
+			getline(cin, codecode);
+			codecode = whiteSpaceRemover(codecode, 1);
+			if(!object.remover(codecode))
+				cout << "Removed Successfully" << endl;
+		}
+		else if(choice == 3){
+			clrScreen();
+			object.billPrinter();
+		}
+		else if(choice == 4){
+			object.discount();
+		}
+	}
 
-			// alternate medicine finder
-		}
-		case 3:{
-			// print bill
-		}
-		case 4:{
-			// management mode
+}
+
+void adminMode(){
+	if(!loginFunction()){
+		int choice = 1;
+		while(choice != 4){
+			clrScreen();
+			cout << "1. Add Records\n2. Remove Records\n3. Add Discount Code\n4. Exit\n> ";
+			cin >> choice;
+			cin.ignore(); 
+			if(choice == 1){
+				clrScreen();
+				addRecords();
+			}
+			else if(choice == 2){
+				clrScreen();
+				string to_delete;
+				cout << "Enter medicine code: ";
+				getline(cin, to_delete);
+				to_delete = whiteSpaceRemover(to_delete, 1);
+				if(stoi(textFetcher("COUNT(*)","internal_data", "internal_code", to_delete))){
+					deleter(to_delete);
+				}
+				else{
+					cout << "No such record in database." << endl;
+				}
+			}
+			else if(choice == 3){
+				discountAdder();
+			}
 		}
 	}
 }
 
+void menu(){
+	int the_choice = 1;
+	while(the_choice != 4){
+		clrScreen();
+		cout << "1. Start Transaction\n2. Alternate Medicine Finder\n3. Admin Mode\n4. Exit\n> ";
+		cin >> the_choice;
+		cin.ignore();
+		if(the_choice == 1){
+				clrScreen();
+				transactionInterface();
+		}
+		else if(the_choice == 2){
+				clrScreen();
+				cout << "Alternative Medicine Finder: " << endl;
+				string code_2;
+				cout << "Enter Medicine Code: ";
+				getline(cin, code_2);
+				code_2 = whiteSpaceRemover(code_2, 1);
+				if(checkRecordsIfExists(code_2, "internal_code", "alternatives") || checkRecordsIfExists(code_2, "internal_code2", "alternatives")){
+					cout << format("The medicine {} : {} has alternative medicine {} : {}", code_2, textFetcher("name", "internal_data", "internal_code", code_2), alternateFinder(code_2), textFetcher("name", "internal_data", "internal_code", alternateFinder(code_2))) << endl;
+				}
+				else{
+					cout << "This medicine does not have a alternate medicine" << endl;
+				}	
+				break;
+			}
+		else if(the_choice == 3){
+			adminMode();
+			}
+		}
+}
+
 int main(int argc, char const *argv[]){
-	searchForStuff();
-	temp_counter = new int;
-	Transaction trans1;
-	trans1.addItem("A102", 5);
-	trans1.addItem("A108", 9);
-	trans1.addItem("A105", 7);
-	// trans1.totaler();
-	trans1.billPrinter();
-	searchForStuff();
-	trans1.remover("A102");
-	trans1.billPrinter();
-	searchForStuff();
-	return 0;
+	menu();
 }
 
 
