@@ -1,12 +1,5 @@
-/*
-#include <iostream>
-#include <map>
-#include <vector>
-#include <string>
-#include <format>
-#include <regex>
-*/
 #include <bits/stdc++.h>
+#include <ncurses.h>
 #include <sqlite3.h>
 // Below ones might not be needed if ncurses.h works
 #ifdef WIN32
@@ -64,15 +57,17 @@ Database 2 has internal_code, quantity, rack_no, price, expiry
 Database 3 has internal_code, composition1, composition2, age
 Database 4 has internal_code, side_effects
 Database 5 has discount_code, percentage
-
-CREATE TABLE IF NOT EXISTS internal_data(internal_code varchar(10), name varchar(255));
-CREATE TABLE IF NOT EXISTS main_data(internal_code varchar(10), quantity int, rack_no int, price decimal(5,2), expiry date);
-CREATE TABLE IF NOT EXISTS composition_data(internal_code varchar(10), composition1 text, composition2 text, age int);
-CREATE TABLE IF NOT EXISTS side_effects(internal_code varchar(10), side_effects text);
-CREATE TABLE IF NOT EXISTS alternatives(internal_code varchar(10), internal_code2 varchar(10));
-CREATE TABLE IF NOT EXISTS discounts(discount_code varchar(10), percentage int);
-
 */
+
+string shortener(string to_short){
+    if (to_short.length() <= 30)
+        return to_short;
+    string final_string;
+    final_string = to_short.substr(0, 27);
+    final_string += "...";
+    return final_string;
+}
+
 
 void databasesInitializer(){
 	const char * data = "Databases Initialized";
@@ -124,12 +119,6 @@ int checkRecordsIfExists(string to_check, string what, string table_to_check){
 	else
 		return 1;
 }
-
-/*
-static int updater(void *NotUsed, int argc, char **argv, char **azColName){
-
-}
-*/
 
 
 // This mess of code adds records to the 
@@ -199,6 +188,7 @@ int addRecords(){ // This function adds records to database
 
 float temp_price = 0;
 int temp_quantity = 0;
+string temp_name;
 static int adder(void *data, int argc, char **argv, char **azColName){
 	float temp_f;
 	temp_f = stof(argv[0]);
@@ -209,10 +199,23 @@ static int adder(void *data, int argc, char **argv, char **azColName){
 class Transaction{
 	public:
 		map<string, int> T_current_list;
-		string T_discount;
+		string T_discount, T_name;
+		char T_gender;
 		float T_total_price;
 		Transaction(){
 			T_total_price = 0;
+			cout << "Enter Patient Name: ";
+			getline(cin, T_name);
+			T_name = whiteSpaceRemover(T_name);
+			cout << "Enter gender: ";
+			cin >> T_gender;
+			cin.ignore();
+			T_gender = toupper(T_gender);
+			if(!(T_gender == 'M' || T_gender == 'F' || T_gender == 'O')){
+				cout << "Invalid gender!! Defaulting to Others.";
+				T_gender = 'o';
+			}
+			cout << "Transaction started." << endl;
 		}
 		int addItem(string T_internal_code, int T_quantity){ // only call if item is not in list already
 			const char *data = "Updater";
@@ -247,6 +250,7 @@ class Transaction{
 		}
 		static int adder(void *data, int argc, char **argv, char **azColName){
 			float temp_f;
+			temp_price = 0;
 			temp_f = stof(argv[0]);
 			temp_price = temp_f;
 			return 0;
@@ -257,6 +261,18 @@ class Transaction{
 			temp_quantity = temp_i;
 			return 0;
 		}
+		static int namer(void *data, int argc, char **argv, char **azColName){
+			temp_name = argv[0];
+			return 0;
+		}
+		string nameNamer(string the_code){
+			char const *data = "Lol";
+			char *zErrMsg = 0;
+			string qq;
+			qq = format("SELECT name FROM internal_data WHERE internal_code='{}';", the_code);
+			rc = sqlite3_exec(db, qq.c_str(), this->namer, (void*)data, &zErrMsg);
+			return temp_name;
+		}
 		int quantityChecker(string T_internal_code){
 			const char *data = "Counter called";
 			char *zErrMsg = 0;
@@ -266,18 +282,29 @@ class Transaction{
 			rc = sqlite3_exec(db, query.c_str(), this->counter, (void*)data, &zErrMsg);
 			return temp_quantity;
 		}
-		void totaler(){
+		float pricer(string code_price){
 			const char *data = "Adder called";
 			char *zErrMsg = 0;
 			string query;
-			for(auto &it : T_current_list){
-				query = format("SELECT price FROM main_data WHERE internal_code='{}';", it.first);
-				rc = sqlite3_exec(db, query.c_str(), adder, (void*)data, &zErrMsg);
-				float temp_2_price;
-				temp_2_price += (temp_price) * (it.second); 
-				cout << it.first << " : " << it.second << " : " << temp_2_price << endl;
-				T_total_price += temp_2_price;
-			}
+			query = format("SELECT price FROM main_data WHERE internal_code='{}';", code_price);
+			rc = sqlite3_exec(db, query.c_str(), this->adder, (void*)data, &zErrMsg);
+			return temp_price;
+		}
+		void billPrinter(){
+			cout << "Aapki Apni Pharmacy :)" << endl;
+		   time_t now = time(0);
+    		char *dt = ctime(&now);
+    		cout << format("The date is {}", dt) << endl;
+    		cout << format("{}:{}", T_name, T_gender) << endl;
+    		int number = T_current_list.size();
+    		std::map<string, int>::iterator T_iterator = T_current_list.begin();
+    		for(int i = 0; i < number; i++){
+    			//float bill_temp_price = stof(textFetcher("price", "main_data", "internal_code", T_iterator->first));
+    			float bill_temp_price = pricer(T_iterator->first);
+    			cout << format("{} | {} | {} | {} | {}", i + 1,  nameNamer(T_iterator->first), T_iterator->second, bill_temp_price, bill_temp_price*(T_iterator->second));
+    			T_iterator++;
+    			cout << endl;
+    		}
 		}
 };
 
@@ -367,7 +394,7 @@ int searchForStuff(){
 		codes_to_names.push_back(textFetcher("name", "internal_data", "internal_code", namename));
 	}
 	for(int i = 0; i < the_codes.size(); i++){
-		cout << format("{} has name {}", the_codes.at(i), codes_to_names.at(i)) << endl;
+		cout << format("{} has name {} with quantity {}", the_codes.at(i), codes_to_names.at(i), textFetcher("quantity", "main_data", "internal_code", the_codes.at(i))) << endl;
 	}
 	return 0;
 }
@@ -375,7 +402,7 @@ int searchForStuff(){
 
 int loginFunction(){ // checks for password and returns 1 for correct and 0 for false
 	SetStdinEcho(false);
-	cout << "Enter Password(will not be echoed):";
+	cout << "Enter Password(will not be echoed): ";
 	string inp_pass;
 	getline(cin, inp_pass);
 	SetStdinEcho(true);
@@ -389,7 +416,7 @@ void menu(){
 	switch(the_choice){
 		case 1:{
 			Transaction trans_object;
-			// transaction menu interface
+			searchForStuff();
 		}
 		case 2:{
 
@@ -406,18 +433,18 @@ void menu(){
 
 int main(int argc, char const *argv[]){
 	searchForStuff();
-	return 0;
-	if(loginFunction())
-		return 1;
-	databasesInitializer();
 	temp_counter = new int;
-	addRecords();
 	Transaction trans1;
-	trans1.addItem("A101", 5);
-	trans1.addItem("C111", 9);
-	trans1.totaler();
+	trans1.addItem("A102", 5);
+	trans1.addItem("A108", 9);
+	// trans1.totaler();
+	trans1.billPrinter();
+	searchForStuff();
 	return 0;
 }
+
+
+
 
 // menu to choose stuff
 // start transaction
@@ -427,6 +454,7 @@ int main(int argc, char const *argv[]){
 // apply discount code
 // alternatice medicine finder 
 // print bill to file
+
 
 // management mode <- requires extra password
 // add records to database(s)
