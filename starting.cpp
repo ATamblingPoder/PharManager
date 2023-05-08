@@ -1,11 +1,14 @@
+/*
 #include <iostream>
 #include <map>
 #include <vector>
 #include <string>
 #include <format>
+#include <regex>
+*/
+#include <bits/stdc++.h>
 #include <sqlite3.h>
 // Below ones might not be needed if ncurses.h works
-#include <regex>
 #ifdef WIN32
 #include <windows.h>
 #else
@@ -109,12 +112,12 @@ int checker(void *data, int argc, char **argv, char **azColName){
 }
 
 
-int checkRecordsIfExists(string to_check, string table_to_check){
+int checkRecordsIfExists(string to_check, string what, string table_to_check){
 	*temp_counter = 0;
 	string query;
 	const char * data = "Checker called";
 	char * zErrMsg = 0;
-	query = format("SELECT COUNT(*) FROM {} WHERE internal_code='{}'", table_to_check, to_check);
+	query = format("SELECT COUNT(*) FROM {} WHERE {}='{}'", table_to_check, what, to_check);
 	rc = sqlite3_exec(db, query.c_str(), checker, (void*)data, &zErrMsg);
 	if(*temp_counter == 0)
 		return 0;
@@ -152,7 +155,7 @@ int addRecords(){ // This function adds records to database
 		string aR_internal_code;
 		getline(cin, aR_internal_code);
 		aR_internal_code = whiteSpaceRemover(aR_internal_code, 1);
-		if(!checkRecordsIfExists(aR_internal_code, "internal_data")){
+		if(!checkRecordsIfExists(aR_internal_code, "internal_code","internal_data")){
 			string aR_name, aR_expiry, aR_composition1, aR_composition2;
 			int aR_quantity, aR_rack, aR_age;
 			float aR_price;
@@ -234,7 +237,7 @@ class Transaction{
 				cout << "Enter discount code: ";
 				getline(cin, T_discount);
 				T_discount = whiteSpaceRemover(T_discount, 1);
-				if(!checkRecordsIfExists(T_discount, "discounts")){
+				if(!checkRecordsIfExists(T_discount, "discount_code", "discounts")){
 					cout << "No such discount in the database!!";
 				}
 			}
@@ -278,6 +281,61 @@ class Transaction{
 		}
 };
 
+
+std::vector<string> the_names;
+static int name_adder(void *NotUsed, int argc, char **argv, char **azColName){
+	the_names.push_back(argv[0]);
+	return 0;
+}
+
+string textFetcher(string q1, string q2, string q3, string q4){
+	const char *data = "Fetcher Called";
+	char *zErrMsg = 0;
+	string query;
+	query = format("SELECT {} FROM {} WHERE {}='{}';", q1, q2, q3, q4);
+	rc = sqlite3_exec(db, query.c_str(), name_adder, (void*)data, &zErrMsg);
+	return the_names.at(0);
+}
+
+
+int alternateAdder(){
+	string code1, code2;
+	cout << "Enter code of the medicine: ";
+	getline(cin, code1);
+	code1 = whiteSpaceRemover(code1, 1);
+	if(checkRecordsIfExists(code1, "internal_code", "alternatives") || checkRecordsIfExists(code1, "internal_code2", "alternatives")){
+		cout << "Already in database!!" << endl;
+		return 1;
+	}
+	cout << format("Medicine with code {} is '{}'", code1, textFetcher("name", "internal_data", "internal_code", code1)) << endl;
+	cout << "Enter code of alternate medicine: ";
+	getline(cin, code2);
+	code2 = whiteSpaceRemover(code2, 1);
+	if(checkRecordsIfExists(code2, "internal_code", "alternatives") || checkRecordsIfExists(code2, "internal_code2", "alternatives")){
+		cout << "Already in database!!" << endl;
+		return 1;
+	}
+	cout << format("Medicine with code {} is '{}'", code2, textFetcher(code2)) << endl;
+	cout << "Confirm? (y/n)";
+	char choice; 
+	cin >> choice;
+	choice = tolower(choice);
+	if(choice != 'y'){
+		cout << "Ok, alternate medicine not added" << endl;
+	}
+	else{
+		const char *data = "Adder";
+		char *zErrMsg = 0;
+		string query;
+		query = format("INSERT INTO alternatives VALUES('{}', '{}');", code1, code2);
+		rc = sqlite3_exec(db, query.c_str(), callback, (void*)data, &zErrMsg);
+		cout << "Alternatives  added successfully." << endl;
+	}
+}
+
+
+
+
 int loginFunction(){ // checks for password and returns 1 for correct and 0 for false
 	SetStdinEcho(false);
 	cout << "Enter Password(will not be echoed):";
@@ -297,6 +355,7 @@ void menu(){
 			// transaction menu interface
 		}
 		case 2:{
+
 			// alternate medicine finder
 		}
 		case 3:{
