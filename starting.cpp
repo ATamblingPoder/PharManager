@@ -226,12 +226,29 @@ class Transaction{
 				return 1;
 			quantity_to_change -= T_quantity;
 			string query;
-			query = format("UPDATE main_data SET quantity={} WHERE internal_code='{}'", quantity_to_change, T_internal_code);
+			query = format("UPDATE main_data SET quantity={} WHERE internal_code='{}';", quantity_to_change, T_internal_code);
 			rc = sqlite3_exec(db, query.c_str(), callback, (void*)data, &zErrMsg);
 			T_return_insert = T_current_list.insert(pair<string, int>(T_internal_code, T_quantity));
 			if(T_return_insert.second == false){
 				cout << "Item alreay in list!" << endl;
 				return 1;
+			}
+			return 0;
+		}
+		int remover(string T_internal_code){
+			int quantity_to_change;
+			std::map<string, int>::iterator remove_it = T_current_list.find(T_internal_code);
+			if(remove_it == T_current_list.end()){
+				cout << "Item to remove not in list!!" << endl;
+			}
+			else{
+				quantity_to_change = quantityChecker(T_internal_code) + remove_it->second;
+				const char *data = "Updater";
+				char *zErrMsg = 0;
+				string query;
+				query = format("UPDATE main_data SET quantity={} WHERE internal_code='{}';", quantity_to_change, T_internal_code);
+				rc = sqlite3_exec(db, query.c_str(), callback, (void*)data, &zErrMsg);
+				T_current_list.erase(remove_it);
 			}
 			return 0;
 		}
@@ -400,6 +417,72 @@ int searchForStuff(){
 }
 
 
+int discountAdder(){
+	string dcode;
+	cout << "Enter discount code: ";
+	getline(cin, dcode);
+	dcode = whiteSpaceRemover(dcode, 1);
+	if(!checkRecordsIfExists(dcode, "discount_code", "discounts")){
+		int perc;
+		cout << "Enter percentage(between 1 and 60): ";
+		cin >> perc;
+		cin.ignore();
+		if (perc > 60 | perc < 1){
+			cout << "Invalid entry." << endl;
+			return -1;
+		}
+		char const *data = "ok";
+		char * zErrMsg = 0;
+		string discount_query;
+		discount_query = format("INSERT INTO discounts VALUES ('{}',{});", dcode, perc);
+		rc = sqlite3_exec(db, discount_query.c_str(), callback, (void*)data, &zErrMsg);
+	}
+	else{
+		cout << "Discount code already exists!" << endl;
+	}
+}
+
+
+string alternateFinder(string to_code){
+	string the_alternate;
+	if(checkRecordsIfExists(to_code, "alternatives", "internal_code")){
+		the_alternate = textFetcher("internal_code2", "alternatives", "internal_code", to_code);
+	}
+	else
+		the_alternate = textFetcher("internal_code", "alternatives", "internal_code2", to_code);
+	return the_alternate;
+}
+
+int deleter(string todelete_code){
+	char choice;
+	cout << "Confirm deletion? :";
+	cin >> choice;
+	cin.ignore();
+	choice = tolower(choice);
+	if(choice == 'y'){
+		cout << "Final Conformation: ";
+		cin >> choice;
+		cin.ignore();
+		choice = tolower(choice);
+		if(choice == 'y'){
+			const char * data = "Gonna Delete";
+			char *zErrMsg = 0;
+			string query;
+			query = format("DELETE FROM internal_data WHERE internal_code='{}'", todelete_code);
+			rc = sqlite3_exec(db, query.c_str(), callback, (void*)data, &zErrMsg);
+			query = format("DELETE FROM main_data WHERE internal_code='{}'", todelete_code);
+			rc = sqlite3_exec(db, query.c_str(), callback, (void*)data, &zErrMsg);
+			query = format("DELETE FROM composition_data WHERE internal_code='{}'", todelete_code);
+			rc = sqlite3_exec(db, query.c_str(), callback, (void*)data, &zErrMsg);
+			query = format("DELETE FROM side_effects WHERE internal_code='{}'", todelete_code);
+			rc = sqlite3_exec(db, query.c_str(), callback, (void*)data, &zErrMsg);
+			query = format("DELETE FROM internal_data WHERE internal_code='{}' OR internal_code2='{}'", todelete_code, todelete_code);
+			rc = sqlite3_exec(db, query.c_str(), callback, (void*)data, &zErrMsg);
+		}
+	}
+}
+
+
 int loginFunction(){ // checks for password and returns 1 for correct and 0 for false
 	SetStdinEcho(false);
 	cout << "Enter Password(will not be echoed): ";
@@ -437,7 +520,11 @@ int main(int argc, char const *argv[]){
 	Transaction trans1;
 	trans1.addItem("A102", 5);
 	trans1.addItem("A108", 9);
+	trans1.addItem("A105", 7);
 	// trans1.totaler();
+	trans1.billPrinter();
+	searchForStuff();
+	trans1.remover("A102");
 	trans1.billPrinter();
 	searchForStuff();
 	return 0;
@@ -446,17 +533,17 @@ int main(int argc, char const *argv[]){
 
 
 
-// menu to choose stuff
-// start transaction
-// search for medicine
-// view current bill
-// remove medicine
-// apply discount code
-// alternatice medicine finder 
+// menu to choose stuff ~
+// start transaction ~
+// search for medicine ~
+// view current bill ~
+// remove medicine ~
+// apply discount code ~
+// alternatice medicine finder ~
 // print bill to file
 
 
 // management mode <- requires extra password
-// add records to database(s)
+// add records to database(s) ~
 // remove records from database(s)
-// add discount code for discount percentage
+// add discount code for discount percentage ~
