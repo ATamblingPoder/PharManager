@@ -19,6 +19,8 @@ int rc = sqlite3_open("test.db", &db);
 int *temp_counter;
 string password="password123";
 
+
+// Copied from StackOverflow :)
 void SetStdinEcho(bool enable = true){
 	#ifdef WIN32
 	    HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE); 
@@ -120,6 +122,11 @@ int checkRecordsIfExists(string to_check, string table_to_check){
 		return 1;
 }
 
+/*
+static int updater(void *NotUsed, int argc, char **argv, char **azColName){
+
+}
+*/
 
 
 // This mess of code adds records to the 
@@ -188,6 +195,7 @@ int addRecords(){ // This function adds records to database
 
 
 float temp_price = 0;
+int temp_quantity = 0;
 static int adder(void *data, int argc, char **argv, char **azColName){
 	float temp_f;
 	temp_f = stof(argv[0]);
@@ -204,7 +212,16 @@ class Transaction{
 			T_total_price = 0;
 		}
 		int addItem(string T_internal_code, int T_quantity){ // only call if item is not in list already
+			const char *data = "Updater";
+			char *zErrMsg = 0;
 			pair<map<string,int>::iterator, bool> T_return_insert;
+			int quantity_to_change = quantityChecker(T_internal_code);
+			if(T_quantity > quantity_to_change)
+				return 1;
+			quantity_to_change -= T_quantity;
+			string query;
+			query = format("UPDATE main_data SET quantity={} WHERE internal_code='{}'", quantity_to_change, T_internal_code);
+			rc = sqlite3_exec(db, query.c_str(), callback, (void*)data, &zErrMsg);
 			T_return_insert = T_current_list.insert(pair<string, int>(T_internal_code, T_quantity));
 			if(T_return_insert.second == false){
 				cout << "Item alreay in list!" << endl;
@@ -230,6 +247,21 @@ class Transaction{
 			temp_f = stof(argv[0]);
 			temp_price = temp_f;
 			return 0;
+		}
+		static int counter(void *data, int argc, char **argv, char **azColName){
+			int temp_i;
+			temp_i = stoi(argv[0]);
+			temp_quantity = temp_i;
+			return 0;
+		}
+		int quantityChecker(string T_internal_code){
+			const char *data = "Counter called";
+			char *zErrMsg = 0;
+			string query;
+			temp_quantity = 0;
+			query = format("SELECT quantity FROM main_data WHERE internal_code='{}';", T_internal_code);
+			rc = sqlite3_exec(db, query.c_str(), this->counter, (void*)data, &zErrMsg);
+			return temp_quantity;
 		}
 		void totaler(){
 			const char *data = "Adder called";
