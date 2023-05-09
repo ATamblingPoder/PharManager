@@ -4,6 +4,7 @@
 main
 test
 test.cpp
-starting
+starting_without_ncurses
 playground*
 text*
+PharManager_Codedump.zip
