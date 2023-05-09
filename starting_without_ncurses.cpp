@@ -182,12 +182,12 @@ int addRecords(){ // This function adds records to database
 			cin.ignore();
 			cout << "Enter expiry date (YYYY-MM-DD): ";
 			getline(cin, aR_expiry);
-			cout << "Enter Minimum Age:";
+			cout << "Enter Minimum Age: ";
 			cin >> aR_age;
 			cin.ignore();
-			cout << "Enter Composed of (1):";
+			cout << "Enter Composed of (1): ";
 			getline(cin, aR_composition1);
-			cout << "Enter Composed of (2):";
+			cout << "Enter Composed of (2): ";
 			getline(cin, aR_composition2);
 			aR_name = whiteSpaceRemover(aR_name);
 			aR_name = regex_replace(aR_name, regex("'"), "''");
@@ -237,7 +237,7 @@ class Transaction{
 				cout << "Invalid gender!! Defaulting to Others.";
 				T_gender = 'o';
 			}
-			cout << "Enter age:";
+			cout << "Enter age: ";
 			cin >> T_age;
 			cin.ignore();
 			clrScreen();
@@ -480,7 +480,7 @@ string alternateFinder(string to_code){
 
 int deleter(string todelete_code){
 	char choice;
-	cout << "Confirm deletion? :";
+	cout << "Confirm deletion? : ";
 	cin >> choice;
 	cin.ignore();
 	choice = tolower(choice);
@@ -529,7 +529,7 @@ void transactionInterface(){
 		if(choice == 1){
 			string codecode;
 			searchForStuff();
-			cout << "Enter medicine code:";
+			cout << "Enter medicine code: ";
 			getline(cin, codecode);
 			codecode = whiteSpaceRemover(codecode, 1);
 			if(!stoi(textFetcher("COUNT(*)", "internal_data", "internal_code", codecode))){
@@ -537,7 +537,7 @@ void transactionInterface(){
 				continue;
 			}
 			int quantity;
-			cout << "Enter quantity";
+			cout << "Enter quantity: ";
 			cin >> quantity;
 			cin.ignore();
 			int rcc = object.addItem(codecode, quantity);
@@ -549,7 +549,7 @@ void transactionInterface(){
 		}
 		else if(choice == 2){
 			string codecode;
-			cout << "Enter medicine code:";
+			cout << "Enter medicine code: ";
 			getline(cin, codecode);
 			codecode = whiteSpaceRemover(codecode, 1);
 			if(!object.remover(codecode))
@@ -598,10 +598,16 @@ void adminMode(){
 	}
 }
 
+void figletizer(){
+	 string test = " ____  _                __  __                                   \n|  _ \\| |__   __ _ _ __|  \\/  | __ _ _ __   __ _  __ _  ___ _ __ \n| |_) | '_ \\ / _` | '__| |\\/| |/ _` | '_ \\ / _` |/ _` |/ _ \\ '__|\n|  __/| | | | (_| | |  | |  | | (_| | | | | (_| | (_| |  __/ |   \n|_|   |_| |_|\\__,_|_|  |_|  |_|\\__,_|_| |_|\\__,_|\\__, |\\___|_|   \n                                                  |___/           ";
+	 cout << test << endl;
+}
+
 void menu(){
 	int the_choice = 1;
 	while(the_choice != 4){
 		clrScreen();
+		figletizer();
 		cout << "1. Start Transaction\n2. Alternate Medicine Finder\n3. Admin Mode\n4. Exit\n> ";
 		cin >> the_choice;
 		cin.ignore();
@@ -622,7 +628,7 @@ void menu(){
 				else{
 					cout << "This medicine does not have a alternate medicine" << endl;
 				}	
-				break;
+				continue;
 			}
 		else if(the_choice == 3){
 			adminMode();
